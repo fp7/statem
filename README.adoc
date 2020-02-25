@@ -1,0 +1,4 @@
+# statem
+
+For example usage see link:test/io/github/fp7/statem_test.clj[statem_test.clj]. The test file reproduces John Hughes test cases from https://www.youtube.com/watch?v=zi0rHwfiX1Q[John Hughes - Testing the Hard Stuff and Staying Sane]
+
