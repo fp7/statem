@@ -9,6 +9,7 @@
 (ns io.github.fp7.statem
   (:refer-clojure :exclude [next])
   (:require [clojure.core :as core]
+            [clojure.set :as set]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.rose-tree :as rose]
             [clojure.test.check.random :as random]
@@ -36,7 +37,6 @@
        (get mapping d d)))
    data))
 
-
 (defn command
   [state {::keys [cmds]}]
   (let [available-cmds (into []
@@ -58,15 +58,23 @@
 (defn valid-sequence?
   [state {::keys [cmds]} cmd-seq]
   (when (seq cmd-seq)
-    (reduce (fn state-reducer [s [_ r [_ cmd args]]]
+    (reduce (fn state-reducer [{::keys [s
+                                        result-symbols]} [_ r [_ cmd args]]]
               (let [static-pre? (get-in cmds [cmd ::static-pre?] (constantly true))
                     dynamic-pre? (get-in cmds [cmd ::dynamic-pre?] (constantly true))
-                    next (get-in cmds [cmd ::next] (fn [s _ _] s))]
-                (if (and (static-pre? s)
+                    next (get-in cmds [cmd ::next] (fn [s _ _] s))
+                    needed-symbols (into #{}
+                                         (filter (fn [d]
+                                                   (instance? SymbolicVar d)))
+                                         (tree-seq coll? seq args))]
+                (if (and (set/subset? needed-symbols result-symbols)
+                         (static-pre? s)
                          (dynamic-pre? s [cmd args]))
-                  (next s r [cmd args])
+                  {::s (next s r [cmd args])
+                   ::result-symbols (conj result-symbols r)}
                   (reduced false))))
-            state
+            {::s state
+             ::result-symbols #{}}
             cmd-seq)))
 
 (defn commands
