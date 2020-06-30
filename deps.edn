@@ -1,5 +1,5 @@
 {:paths ["src/"]
- :deps {org.clojure/test.check {:mvn/version "0.10.0"}}
+ :deps {org.clojure/test.check {:mvn/version "1.0.0"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-590"}
                                lambdaisland/kaocha-cloverage {:mvn/version "0.0-41"}}
