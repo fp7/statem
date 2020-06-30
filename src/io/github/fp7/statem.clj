@@ -37,6 +37,12 @@
        (get mapping d d)))
    data))
 
+(defn one-of
+  [generators]
+  (gen/bind (gen/no-shrink
+             (gen/choose 0 (dec (count generators))))
+            #(nth generators %)))
+
 (defn command
   [state {::keys [cmds]}]
   (let [available-cmds (into []
@@ -53,7 +59,7 @@
      (fn [[cmd args]]
        (let [dynamic-pre? (get-in cmds [cmd ::dynamic-pre?] (constantly true))]
          (dynamic-pre? state [cmd args])))
-     (gen/one-of available-cmds))))
+     (one-of available-cmds))))
 
 (defn valid-sequence?
   [state {::keys [cmds]} cmd-seq]
@@ -94,13 +100,13 @@
                                            cmd-rose)
                                 (cmd-seq (next state (symbolic cnt) (rose/root cmd-rose))
                                          (inc cnt)
-                                         r2))))))]
-       (let [data (into []
-                        (cmd-seq state 0 rnd))]
-         (->> data
-              (rose/shrink-vector vector )
-              (rose/collapse)
-              (rose/filter (partial valid-sequence? state opts))))))))
+                                         r2))))))
+           data (into []
+                      (cmd-seq state 0 rnd))]
+       (->> data
+            (rose/shrink-vector vector )
+            (rose/collapse)
+            (rose/filter (partial valid-sequence? state opts)))))))
 
 
 (defn run
