@@ -65,20 +65,28 @@
   [state {::keys [cmds]} cmd-seq]
   (when (seq cmd-seq)
     (reduce (fn state-reducer [{::keys [s
-                                        result-symbols]} [_ r [_ cmd args]]]
-              (let [static-pre? (get-in cmds [cmd ::static-pre?] (constantly true))
-                    dynamic-pre? (get-in cmds [cmd ::dynamic-pre?] (constantly true))
-                    next (get-in cmds [cmd ::next] (fn [s _ _] s))
-                    needed-symbols (into #{}
-                                         (filter (fn [d]
-                                                   (instance? SymbolicVar d)))
-                                         (tree-seq coll? seq args))]
-                (if (and (set/subset? needed-symbols result-symbols)
-                         (static-pre? s)
-                         (dynamic-pre? s [cmd args]))
-                  {::s (next s r [cmd args])
-                   ::result-symbols (conj result-symbols r)}
-                  (reduced false))))
+                                        result-symbols]} [_ r [_ cmd args] :as call]]
+              (try
+                (let [static-pre? (get-in cmds [cmd ::static-pre?] (constantly true))
+                      dynamic-pre? (get-in cmds [cmd ::dynamic-pre?] (constantly true))
+                      next (get-in cmds [cmd ::next] (fn [s _ _] s))
+                      needed-symbols (into #{}
+                                           (filter (fn [d]
+                                                     (instance? SymbolicVar d)))
+                                           (tree-seq coll? seq args))]
+                  (if (and (set/subset? needed-symbols result-symbols)
+                           (static-pre? s)
+                           (dynamic-pre? s [cmd args]))
+                    {::s (next s r [cmd args])
+                     ::result-symbols (conj result-symbols r)}
+                    (reduced false)))
+                (catch Exception e
+                  (throw (ex-info "exception during cmd-seq validation"
+                                  {::state s
+                                   ::result-symbols result-symbols
+                                   ::cmd-seq cmd-seq
+                                   ::call call}
+                                  e)))))
             {::s state
              ::result-symbols #{}}
             cmd-seq)))
@@ -118,21 +126,28 @@
   [cmd-seq {::keys [cmds state]}]
   (let [result
         (reduce (fn [{::keys [mappings state] :as env} [op res [call-kw fn-sym args :as call]]]
-                  (case op
-                    ::set
-                    (let [dyn-res (run mappings call)
-                          post (get-in cmds [fn-sym ::post?] (constantly true))
-                          next (get-in cmds [fn-sym ::next] (fn [s _ _] s))
-                          new-mappings (assoc mappings res dyn-res)
-                          replaced-args (run new-mappings args)]
-                      (if (run new-mappings (post state [fn-sym replaced-args] dyn-res))
-                        (let [next-state (run new-mappings (next state dyn-res [fn-sym replaced-args]))]
-                          (assoc env
-                                 ::mappings new-mappings
-                                 ::state next-state))
-                        (reduced (assoc env
-                                        ::failed? true
-                                        ::call call))))))
+                  (try
+                    (case op
+                      ::set
+                      (let [dyn-res (run mappings call)
+                            post (get-in cmds [fn-sym ::post?] (constantly true))
+                            next (get-in cmds [fn-sym ::next] (fn [s _ _] s))
+                            new-mappings (assoc mappings res dyn-res)
+                            replaced-args (run new-mappings args)]
+                        (if (run new-mappings (post state [fn-sym replaced-args] dyn-res))
+                          (let [next-state (run new-mappings (next state dyn-res [fn-sym replaced-args]))]
+                            (assoc env
+                                   ::mappings new-mappings
+                                   ::state next-state))
+                          (reduced (assoc env
+                                          ::failed? true
+                                          ::call call)))))
+                    (catch Exception e
+                      (reduced {::state state
+                                ::call call
+                                ::mapping mappings
+                                ::exception e
+                                ::failed? true}))))
                 {::state state
                  ::mappings {}
                  ::failed? false}
