@@ -123,35 +123,37 @@
 
 
 (defn run-commands
-  [cmd-seq {::keys [cmds state]}]
-  (let [result
-        (reduce (fn [{::keys [mappings state] :as env} [op res [call-kw fn-sym args :as call]]]
-                  (try
-                    (case op
-                      ::set
-                      (let [dyn-res (run mappings call)
-                            post (get-in cmds [fn-sym ::post?] (constantly true))
-                            next (get-in cmds [fn-sym ::next] (fn [s _ _] s))
-                            new-mappings (assoc mappings res dyn-res)
-                            replaced-args (run new-mappings args)]
-                        (if (run new-mappings (post state [fn-sym replaced-args] dyn-res))
-                          (let [next-state (run new-mappings (next state dyn-res [fn-sym replaced-args]))]
-                            (assoc env
-                                   ::mappings new-mappings
-                                   ::state next-state))
-                          (reduced (assoc env
-                                          ::failed? true
-                                          ::call call)))))
-                    (catch Exception e
-                      (reduced {::state state
-                                ::call call
-                                ::mapping mappings
-                                ::exception e
-                                ::failed? true}))))
-                {::state state
-                 ::mappings {}
-                 ::failed? false}
-                cmd-seq)]
-    (reify results/Result
-      (pass? [_] (not(get result ::failed?)))
-      (result-data [_] result))))
+  ([cmd-seq spec]
+   (run-commands cmd-seq spec nil))
+  ([cmd-seq {::keys [cmds state]} mappings]
+   (let [result
+         (reduce (fn [{::keys [mappings state] :as env} [op res [call-kw fn-sym args :as call]]]
+                   (try
+                     (case op
+                       ::set
+                       (let [dyn-res (run mappings call)
+                             post (get-in cmds [fn-sym ::post?] (constantly true))
+                             next (get-in cmds [fn-sym ::next] (fn [s _ _] s))
+                             new-mappings (assoc mappings res dyn-res)
+                             replaced-args (run new-mappings args)]
+                         (if (run new-mappings (post state [fn-sym replaced-args] dyn-res))
+                           (let [next-state (run new-mappings (next state dyn-res [fn-sym replaced-args]))]
+                             (assoc env
+                                    ::mappings new-mappings
+                                    ::state next-state))
+                           (reduced (assoc env
+                                           ::failed? true
+                                           ::call call)))))
+                     (catch Exception e
+                       (reduced {::state state
+                                 ::call call
+                                 ::mapping mappings
+                                 ::exception e
+                                 ::failed? true}))))
+                 {::state state
+                  ::mappings (or mappings {})
+                  ::failed? false}
+                 cmd-seq)]
+     (reify results/Result
+       (pass? [_] (not(get result ::failed?)))
+       (result-data [_] result)))))
