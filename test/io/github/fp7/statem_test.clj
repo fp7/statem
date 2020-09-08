@@ -17,13 +17,11 @@
             [io.github.fp7.statem :as statem])
   (:import [java.util.concurrent.atomic AtomicInteger]))
 
-
 (defrecord MutableCircularQueue
-    [^AtomicInteger inp
-     ^AtomicInteger outp
-     size
-     ^ints buf])
-
+           [^AtomicInteger inp
+            ^AtomicInteger outp
+            size
+            ^ints buf])
 
 (defn queue
   [size]
@@ -32,7 +30,6 @@
    (AtomicInteger. 0)
    size
    (make-array Integer/TYPE size)))
-
 
 (defn put
   [^MutableCircularQueue q  n]
@@ -44,7 +41,6 @@
   (let [ans (aget ^ints (.-buf q) (.get ^AtomicInteger (.-outp q)))]
     (.set ^AtomicInteger (.-outp q) (rem (inc (.get ^AtomicInteger (.-outp q))) (.-size q)))
     ans))
-
 
 (defn size
   [^MutableCircularQueue q]
@@ -58,8 +54,6 @@
 (def init-state
   {:ptr nil
    :contents []})
-
-
 
 (def cmds
   {#'queue {::statem/static-pre? (fn [s]
@@ -98,7 +92,6 @@
                             (= r
                                (count (core/get s :contents))))}})
 
-
 (def prop-queue-with-no-modification
   (properties/for-all [cmd-seq (statem/commands {::statem/cmds cmds
                                                  ::statem/state init-state})]
@@ -107,22 +100,18 @@
                        {::statem/cmds cmds
                         ::statem/state init-state})))
 
-
 (comment
   (gen/generate (statem/commands {::statem/state init-state
-                                  ::statem/cmds cmds}) 5)
-  )
+                                  ::statem/cmds cmds}) 5))
 
 (comment
-  (check/quick-check 100 prop-queue-with-no-modification ))
-
+  (check/quick-check 100 prop-queue-with-no-modification))
 
 (test/deftest queue-with-no-modification-fails
   (test/testing "The origignal fails with only 3 inputs"
     (let [r (check/quick-check 100 prop-queue-with-no-modification)]
       (test/is (false? (core/get r :result)))
       (test/is (= 3 (count (first (core/get-in r [:shrunk :smallest]))))))))
-
 
 (defn queue-2
   [size]
@@ -132,7 +121,6 @@
    (inc size)
    (make-array Integer/TYPE (inc size))))
 
-
 (def prop-queue-with-incremented-size
   (let [c {::statem/cmds
            (set/rename-keys cmds
@@ -141,7 +129,6 @@
     (properties/for-all [cmd-seq (statem/commands c)]
                         (statem/run-commands cmd-seq
                                              c))))
-
 
 (test/deftest queue-with-incremented-size-fails
   (test/testing "The queue with internally incremented size fails with 5 inputs"
@@ -173,7 +160,6 @@
       (test/is (false? (core/get r :result)))
       (test/is (= 6 (count (first (core/get-in r [:shrunk :smallest]))))))))
 
-
 (defn size-3
   [^MutableCircularQueue q]
   (rem
@@ -182,7 +168,6 @@
        (.get ^AtomicInteger (.-outp q)))
     (.-size q))
    (.-size q)))
-
 
 (def prop-queue-which-adds-buffer-size-in-size-call
   (let [c {::statem/cmds
@@ -199,8 +184,5 @@
     (let [r (check/quick-check 100 prop-queue-which-adds-buffer-size-in-size-call)]
       (test/is (core/get r :result)))))
 
-
-
 (comment
-  (check/quick-check 100 prop-queue-with-no-modification)
-  )
+  (check/quick-check 100 prop-queue-with-no-modification))

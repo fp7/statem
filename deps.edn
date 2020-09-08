@@ -3,4 +3,6 @@
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-590"}
                                lambdaisland/kaocha-cloverage {:mvn/version "0.0-41"}}
-                  :main-opts ["-m" "kaocha.runner" "--plugin" "cloverage"]}}}
+                  :main-opts ["-m" "kaocha.runner" "--plugin" "cloverage"]}
+           :fmt {:extra-deps {lein-cljfmt/lein-cljfmt {:mvn/version "0.6.8"}}
+                 :main-opts ["-m" "cljfmt.main"]}}}

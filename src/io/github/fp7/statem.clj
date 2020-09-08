@@ -17,13 +17,11 @@
             [clojure.test.check.properties :as properties]
             [clojure.walk :as walk]))
 
-
 (defrecord SymbolicVar [var])
 
 (defn symbolic
   [var]
   (->SymbolicVar var))
-
 
 (defn symbolic->dynamic
   [mapping data]
@@ -112,15 +110,13 @@
            data (into []
                       (cmd-seq state 0 rnd))]
        (->> data
-            (rose/shrink-vector vector )
+            (rose/shrink-vector vector)
             (rose/collapse)
             (rose/filter (partial valid-sequence? state opts)))))))
-
 
 (defn run
   [mappings call]
   (symbolic->dynamic mappings call))
-
 
 (defn run-commands
   ([cmd-seq spec]
@@ -155,5 +151,5 @@
                   ::failed? false}
                  cmd-seq)]
      (reify results/Result
-       (pass? [_] (not(get result ::failed?)))
+       (pass? [_] (not (get result ::failed?)))
        (result-data [_] result)))))
