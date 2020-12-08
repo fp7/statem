@@ -138,6 +138,7 @@
                                     ::mappings new-mappings
                                     ::state next-state))
                            (reduced (assoc env
+                                           :mappings new-mappings
                                            ::failed? true
                                            ::call call)))))
                      (catch Exception e
